@@ -1,0 +1,50 @@
+%%%
+% LaTeX Template for Thesis submitted to AG-Jager
+% This is just a guideline - modify as you like :)
+% Last Update: 2‚4-05-2017
+% Template provided by Kai Gellert
+%%%
+
+\documentclass[a4paper, 12pt, parskip]{scrreprt}
+
+\def\Title{Titel} % title
+\def\Author{Autor} % your name
+\def\Type{Seminararbeit} % {Seminararbeit, Bachelorarbeit, Bachelor Thesis, ...}
+\def\Supervisor{Vorname Nachname} % supervisor's name
+
+% input encoding as utf8, important for umlauts
+\usepackage[utf8]{inputenc}
+
+% for English change to "english"
+\usepackage[ngerman]{babel}
+
+% Add additional packages as required
+\usepackage{graphicx}
+
+\begin{document}
+
+\include{src/titlepage}
+
+%\pagenumbering{roman}
+%\tableofcontents
+%\newpage
+
+\chapter{Einführung}
+
+
+\pagenumbering{arabic}
+% Include your files here!
+
+%\include{content}
+
+
+% bibliography
+% we recommend using cryptobib for your bibliography
+% c.f. https://cryptobib.di.ens.fr
+% you also might want use biblatex or bibtex. Add the packages as you like.
+%\clearpage
+%\addcontentsline{toc}{chapter}{Literaturverzeichnis}
+%\bibliographystyle{alpha}
+%\bibliography{abbrev0, crypto}
+
+\end{document}
