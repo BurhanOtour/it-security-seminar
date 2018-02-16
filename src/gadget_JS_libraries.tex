@@ -1,0 +1,85 @@
+\chapter{Gadgets in modern JS libraries}
+In their paper \todo{Need to be completed} Sebastian Lekies et al. \cite{paper} the authors conducted an empirical study on 15 modern JavaScript libraries/frameworks. They looked manually at the code base of those libraries in order to find gadgets. So for each library in the list, they tried to build an exploit to bypass each of the mitigation tested. Interestingly, all the considered libraries\todo{Ref to code snippets may be leaked} (except for React) contain gadgets which can be abused to bypass different classes of mitigations. 
+
+In order to describe this, It's best to start by looking at gadgets by the mitigations they target. 
+
+\section{Bypassing WAFs \& XSS filters}
+They detect XSS attepns by looking at request parameters, sometimes they use regular expressions and sometime they use more elaborate logic. If gadgets are really prevalent, they will be very successful in bypassing such mitigation, solely becuase of the way the gadgets work.  
+
+\paragraph{Knockout.JS}
+This is a Knockout JavaScript Library\todo{Add footnote}. This library has small templating language inside of it. The HTML snippet in listing \ref{lst:filters_knockout} tells Knockout to inject 'Hello World' as a string into the content of this \verb|<div>| element using some custom language for Knockout in specific. What this snippet in Knockout triggers is several gadgets. First Gadget, is very simple one, get the content of the \verb|data-bind| attribute and then assign it to some variable in the application. Later on, Knockout creates a JavaScript function and in the body of that function there is the 'Hello World' expression. Literally, there is a new function created by Knockout that will contain something originally present in the HTML that we assume injected. Finally, the Knockout will execute the newly created function will be the last gadget in the chain\todo{Gadget Chain idea}. To summaries, there is a gadget in Knockout that upgrade the value of \verb|data-bind| attribute into an \verb|eval()| call (the function constructor is essentially equivalent to \verb|eval()|).\\
+
+
+\lstinputlisting[language=HTML,label={lst:filters_knockout},caption= tbd]{listings/knockout.html} 
+
+
+\lstinputlisting[language=HTML,label={lst:filters_knockout_gadget},caption= Knockout gadgets chain that creates and executes a JS function]{listings/knockout_gadgets.js}
+
+In summary, in order to XSS a website that happens to use the Knockout.js library, and also on top of that uses an XSS filter like WAF, and instead of injecting \verb|<script>| into the request, it is enough if you just inject this fairly-innocent-looking-to-the mitigation HTML element: 
+\verb|<div data-bind="value: alert(1)"></div>|
+
+\paragraph{Tooltip functionality in Bootstrap}
+Bootstrap is another JS library which contain gadgets that are also capable of circumventing this class of mitigations. In Bootstrap we can define tooltips, The bootstrap does everything with data attributes via the so-called data attributes API. So here we have a tooltip and by default this tooltip is rendered as text. But as bootstrap functionality works by data attributes, you can change the internal configuration with bootstrap. So, you can assign data-html equals true which bootstrap will turn it into configuration property and it will use jQuery which will create a script node which will bypass strict-dynamic. 
+
+
+\lstinputlisting[language=HTML,label={lst:bootstrap_tooltip},caption= tbd]{listings/bootstrap_tooltip.html}
+
+\section{Bypassing HTML sanitizers}
+
+Sometimes, web applications actually need to display untrusted HTML content coming from the user. Let’s take as an example a web mail application. That is where HTML sanitizers coming into place. They take the untrusted content, try to filter out everything bad that contains JS and leave everything else intact. For example, script elements will be removed, inline event handlers will be removed but the \verb|<p>| tag remains intact. Some sanitizers, often whitelist the data attribute ( a new to HTML specification). Those two properties allow some found Gadgets in modern JS library to be very handy in bypassing HTML sanitizers for two reasons:
+
+\begin{enumerate}
+	\item This JS code that we want to execute can be present in those benign attributes like id or title or other as you will see soon (that should not be presented like this in the final text).
+	\item The gadgets very often leverage the data attributes value. So, they actually pulled part of the payload from the data-attributes. 
+\end{enumerate}
+
+\paragraph{Ajaxify}
+Decides a div with class “document-script” should actually be created as script and the body of the div is the content of this newly created and initiated script. Such patterns are common and that is why Gadgets are interesting in bypassing mechanism. 
+
+\lstinputlisting[language=HTML,label={lst:ajaxify},caption= tbd]{listings/ajaxify.html}
+
+\paragraph{Bootstrap}
+The same example as before (listing \ref{lst:bootstrap_tooltip})(the same vector) the simple gadgets can bypass both mitigations unmodified\todo{important idea to highlight}. 
+
+\section{Bypassing CSP}
+Content security policy works on a completely different level. They try to distinguish between a trusted script and untrusted script. To do this, it works on mode. 
+	 
+\begin{enumerate}
+	\item Whitelist of origins.
+	\item Nonce-based mode If the attacked injected a script 
+\end{enumerate}
+
+Unfortunately, it turned out that Content Security Policy is hard to adopt on existing website. Hard to adoption on existing website (cite). The community came up with a list of cures which makes the adoption a little bit easier on the expense of the security. 
+\subsection{Bypassing CSP unsafe-eval} What it does to the policy is a slight relaxation. Now, your trusted script is allowed to call \verb|eval()| function. That looks benign  (safe), since the script is trusted and comes from trusted origin, what is the wose that can happen.
+
+A lot of gadgets can bypass the unsafe-eval version of content security policy. simply because lots of gadgets call \verb|eval()|. 
+
+\paragraph{Underscore.js}
+
+library is a templating library: we can simply inject underscore template, and what ever is passed within those \verb|<% %>| will be passed to \verb|eval()| function for execution\todo{footnote}. 
+
+\lstinputlisting[language=HTML,label={lst:underscore},caption= Bypassing CSP unsafe-eval with Underscore Gadget]{listings/underscore.html}
+
+\subsection{Bypassing CSP strict-dynamic}
+The second keyword. It’s most used in nonce-based mode. The problem is that a lot of script you include are unaware of this fact. Facebook like button as a script, or some other widgets those script will not aware that you are using CSP in nonce based mode so they will not be able to fetch those nonce and add them to the newly created scripts that these libraries create. What script dynamics does is that it allows trusted script to create new script without nonce. So, if you add a Facebook script that Facebook script can create new Facebook scripts without propagating trust. And this is interesting again since we can use (see) this in script gadgets. For example: Bypassing script-dynamic in jQuery mobile.
+
+\lstinputlisting[language=HTML,label={lst:jquery_mobile},caption= Bypassing CSP strict-dynamic with jQuery Mobile Gadget]{listings/jquery_mobile.html}
+
+jQuery Mobile has popup functionality, so you can press a button and you have this overlay popup. 
+(For performance reason they prerendered it when the page load. Concatenate what is in the id as part of the comment for the popup placeholder. jQuery Mobile relies on jQuery.html() to render HTML). jQuery.html function is a wrapper for innerHTML function with one exception, it in addition to innerHTML tries to look for script tags in the string and creates them dynamically. That was work around by jQuery is the thing that allows as to have it as a gadget. (\verb|$.html()|  that behavior allows the HTML)
+
+\subsection{Gadgets in expression parsers}
+Now let’s get back to the traditional CSP (like without any unsafe-eval or strict-dynamic). Those getgets are hard to find. We couldn’t use any gadgets that will upgrage a text ito script using eval() since that is detected by CSP. Fortunatily, We where able to bypass such CSPs using gadgets in expression parsers. And as a bounus, the very same vector works for all other mitigations. 
+
+\paragraph{Expression parsers}
+There are several JS frameworks that have templating components inside them, so they have certain custom language for expression that could be embedded into the HTML. Let’s see how such expression may look like by taking an example from Aurelia framework. Listing \ref{lst:parser_example} . it instructs the Aurelia framework to insert the property name of some object called customer into the table element when rendering the page. What is interesting is that the code in braces is not JavaScript. It’s an expression written according to the definition of the expression language Aurelia framework. Which get parssed by Aurlia and then evaluate it. It creates a chain of function that would eventually fetch the name property of some customer object and then insert using, for example, \verb|innerHTML| or similar. 
+
+\lstinputlisting[language=HTML,label={lst:parser_example},caption= tbd]{listings/parser_example.html}
+
+Listing \ref{lst:aurelia_image_exploit} shows exploit for gadget in AnuglarJS expression parser. We have a cookie stealer that is completely JS free. That is completely JS free. In that expression, you tell Aurelia to take the global object which is window then give the document then put the cookie. And there is not JS involved. It’s a domain specific language of Aurelia. 
+
+\lstinputlisting[language=HTML,label={lst:aurelia_image_exploit},caption= tbd]{listings/aurelia_image_exploit.html}
+
+We can also do some interesting things, let’s suppose that CSP in place is in nonce-based mode to validate whether script is legitimate or not. We here use an expression to insert the nonce for us. Here in the example Let’s suppose the attacker inject the following, however, at injection time we don’t know the nonce. So we add a nonce attribute and within this nonce attribute we specify an expression: it will go to document and say what is the current script (in this case it’s Ractive ascript) and we get the nonce from there and add it in the current place.   
+
+\lstinputlisting[language=HTML,label={lst:ractive},caption= tbd]{listings/ractive.html}

